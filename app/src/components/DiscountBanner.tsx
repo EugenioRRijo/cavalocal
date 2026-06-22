@@ -13,7 +13,7 @@ export function DiscountBanner({ onPress }: { onPress: () => void }) {
       <View style={styles.left}>
         <Text style={styles.kicker}>SOLO PARA REGISTRADOS</Text>
         <Text style={styles.title}>5% en tu primera reserva</Text>
-        <Text style={styles.subtitle}>Creá tu cuenta gratis y empezá a ahorrar</Text>
+        <Text style={styles.subtitle}>Crea tu cuenta gratis y empieza a ahorrar</Text>
       </View>
       <View style={styles.cta}>
         <Text style={styles.ctaText}>Registrarme</Text>

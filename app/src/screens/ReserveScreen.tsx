@@ -72,7 +72,7 @@ export function ReserveScreen({ route, navigation }: Props) {
         </View>
 
         {/* Método */}
-        <Text style={styles.sectionTitle}>¿Cómo lo querés?</Text>
+        <Text style={styles.sectionTitle}>¿Cómo lo quieres?</Text>
         <View style={styles.methods}>
           <Pressable
             style={[styles.method, method === 'pickup' && styles.methodActive]}

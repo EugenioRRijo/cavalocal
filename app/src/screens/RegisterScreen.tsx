@@ -40,9 +40,9 @@ export function RegisterScreen({ navigation, route }: Props) {
           </View>
 
           <Text style={styles.kicker}>CAVALOCAL</Text>
-          <Text style={styles.title}>Creá tu cuenta</Text>
+          <Text style={styles.title}>Crea tu cuenta</Text>
           <View style={styles.divider} />
-          <Text style={styles.subtitle}>Sumate a la guía de vinos de Caracas</Text>
+          <Text style={styles.subtitle}>Súmate a la guía de vinos de Caracas</Text>
 
           <View style={styles.formFields}>
             <Field label="Nombre" value={name} onChangeText={(t) => { setName(t); setError(null); }} placeholder="Tu nombre" autoCapitalize="words" />
@@ -58,7 +58,7 @@ export function RegisterScreen({ navigation, route }: Props) {
 
           <Pressable onPress={() => navigation.navigate('Login', { next })} style={styles.linkWrap}>
             <Text style={styles.link}>
-              ¿Ya tenés cuenta? <Text style={styles.linkStrong}>Iniciar sesión</Text>
+              ¿Ya tienes cuenta? <Text style={styles.linkStrong}>Iniciar sesión</Text>
             </Text>
           </Pressable>
         </View>

@@ -17,7 +17,7 @@ export const API_BASE_URL: string =
 
 /**
  * URL del landing animado (escenas + videos) que se incrusta en la app.
- * En el preview web carga con localhost; para un teléfono real, poné la IP de
+ * En el preview web carga con localhost; para un teléfono real, coloca la IP de
  * tu PC en la red (ej. http://192.168.1.X:3000) o el landing hosteado.
  */
 export const LANDING_URL: string =

@@ -41,7 +41,7 @@ function EmptyState({ term }: { term: string }) {
     <View style={styles.empty}>
       <Cavi size={92} expression="contento" />
       <Text style={styles.emptyTitle}>No encontré {term ? `“${term}”` : 'resultados'}</Text>
-      <Text style={styles.emptyText}>Probá con otra cepa, bodega, país o quitá filtros.</Text>
+      <Text style={styles.emptyText}>Prueba con otra cepa, bodega, país o quita filtros.</Text>
     </View>
   );
 }
@@ -94,7 +94,7 @@ export function SearchScreen() {
 
   const promoSlides: PromoSlide[] = [
     { id: 'pomar', kicker: 'BODEGA DESTACADA', title: 'Pomar, de Carora a tu copa', subtitle: 'El vino venezolano, en tu zona', cta: 'Ver Pomar', image: require('../../assets/promo/promo-1.webp'), onPress: () => setTerm('Pomar') },
-    { id: 'espumantes', kicker: 'PARA CELEBRAR', title: 'Brindá esta semana', subtitle: 'Espumantes con burbuja fina', cta: 'Ver espumantes', image: require('../../assets/promo/promo-2.webp'), onPress: () => setTerm('Espumante') },
+    { id: 'espumantes', kicker: 'PARA CELEBRAR', title: 'Brinda esta semana', subtitle: 'Espumantes con burbuja fina', cta: 'Ver espumantes', image: require('../../assets/promo/promo-2.webp'), onPress: () => setTerm('Espumante') },
     { id: 'malbec', kicker: 'EL CLÁSICO', title: 'Malbec argentino', subtitle: 'El preferido, desde $12,90', cta: 'Ver Malbec', image: require('../../assets/promo/promo-3.webp'), onPress: () => setTerm('Malbec') },
   ];
 

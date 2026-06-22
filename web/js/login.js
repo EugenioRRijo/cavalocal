@@ -25,10 +25,10 @@ function setMode(next) {
     t.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   el.fieldName.hidden = isLogin;
-  el.title.textContent = isLogin ? 'Bienvenido de nuevo' : 'Creá tu cuenta';
+  el.title.textContent = isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta';
   el.subtitle.textContent = isLogin
-    ? 'Entrá para seguir descubriendo vinos.'
-    : 'Sumate y reservá en segundos.';
+    ? 'Entra para seguir descubriendo vinos.'
+    : 'Súmate y reserva en segundos.';
   el.submit.textContent = isLogin ? 'Iniciar sesión' : 'Crear cuenta';
   el.pass.setAttribute('autocomplete', isLogin ? 'current-password' : 'new-password');
   el.strength.hidden = isLogin;
@@ -63,9 +63,9 @@ async function submit(e) {
   hideError();
   const email = el.email.value.trim();
   const pass = el.pass.value;
-  if (!isValidEmail(email)) return showError('Ingresá un correo válido.');
+  if (!isValidEmail(email)) return showError('Ingresa un correo válido.');
   if (!passwordStrength(pass).valid) return showError('La contraseña debe tener al menos 6 caracteres.');
-  if (mode === 'register' && !el.name.value.trim()) return showError('Ingresá tu nombre.');
+  if (mode === 'register' && !el.name.value.trim()) return showError('Ingresa tu nombre.');
 
   el.submit.disabled = true;
   el.submit.textContent = 'Un momento…';

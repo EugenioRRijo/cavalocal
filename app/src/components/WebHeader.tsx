@@ -45,7 +45,7 @@ export function WebHeader({ term, onTermChange, onSelectCategory }: Props) {
       <View style={styles.topbar}>
         <Text style={styles.topbarText}>
           <Text style={styles.topbarGold}>5% en tu primera reserva</Text>
-          <Text style={styles.topbarMuted}>  ·  Registrate gratis y empezá a ahorrar</Text>
+          <Text style={styles.topbarMuted}>  ·  Regístrate gratis y empieza a ahorrar</Text>
         </Text>
         <View style={styles.topRight}>
           <Icon name="pin" size={12} color={colors.gold} />

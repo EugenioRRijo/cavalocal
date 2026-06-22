@@ -97,7 +97,7 @@ function stepConfirma() {
   const r = st.reservation;
   const mailMsg = st._emailSent
     ? 'Te enviamos la factura a <b>' + esc(r.customerEmail) + '</b>.'
-    : 'No pudimos enviar el correo, pero podés imprimir la factura.';
+    : 'No pudimos enviar el correo, pero puedes imprimir la factura.';
   return '<div class="co-ok"><div class="check">✓</div>' +
     '<h3>¡Reserva confirmada!</h3>' +
     '<p>Código <b>' + esc(r.invoiceNumber) + '</b>. ' + mailMsg + '</p></div>' +
@@ -124,8 +124,8 @@ function bind() {
       st.customer.email = $('#co-email').value.trim();
       st.customer.phone = $('#co-phone').value.trim();
       st.pickupDate = $('#co-date').value;
-      if (!st.customer.name) return showErr('Ingresá tu nombre.');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(st.customer.email)) return showErr('Ingresá un correo válido.');
+      if (!st.customer.name) return showErr('Ingresa tu nombre.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(st.customer.email)) return showErr('Ingresa un correo válido.');
       const offer = st.offers[st.offerIdx];
       const btn = $('#co-next'); btn.disabled = true; btn.textContent = 'Creando reserva…';
       try {
@@ -147,7 +147,7 @@ function bind() {
       if (!luhnValid(card.cardNumber)) return showErr('Número de tarjeta inválido.');
       if (!expiryValid(card.expiry)) return showErr('Vencimiento inválido o tarjeta vencida.');
       if (!cvvValid(card.cvv)) return showErr('CVV inválido.');
-      if (!card.cardName) return showErr('Ingresá el titular.');
+      if (!card.cardName) return showErr('Ingresa el titular.');
       const btn = $('#co-pay'); btn.disabled = true; btn.textContent = 'Procesando…';
       try {
         const out = await api.payReservation(st.reservation.id, card);

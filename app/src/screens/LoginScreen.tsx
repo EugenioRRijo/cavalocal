@@ -41,7 +41,7 @@ export function LoginScreen({ navigation, route }: Props) {
           <Text style={styles.kicker}>CAVALOCAL</Text>
           <Text style={styles.title}>Bienvenido de nuevo</Text>
           <View style={styles.divider} />
-          <Text style={styles.subtitle}>Ingresá a tu guía de vinos premium</Text>
+          <Text style={styles.subtitle}>Ingresa a tu guía de vinos premium</Text>
 
           <View style={styles.formFields}>
             <Field
@@ -68,7 +68,7 @@ export function LoginScreen({ navigation, route }: Props) {
 
           <Pressable onPress={() => navigation.navigate('Register', { next })} style={styles.linkWrap}>
             <Text style={styles.link}>
-              ¿No tenés cuenta? <Text style={styles.linkStrong}>Crear cuenta</Text>
+              ¿No tienes cuenta? <Text style={styles.linkStrong}>Crear cuenta</Text>
             </Text>
           </Pressable>
         </View>

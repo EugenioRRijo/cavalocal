@@ -22,22 +22,22 @@ npm run start:dev
 
 ## 1) (Alternativa) Conseguir una base PostgreSQL desde cero
 **Opción A — Nube gratis (recomendada, sin instalar nada):**
-1. Creá una cuenta en https://neon.tech (o https://supabase.com).
-2. Creá un proyecto → copiá la **connection string** (postgresql://...).
-3. Pegala en `.env` como `DATABASE_URL`.
+1. Crea una cuenta en https://neon.tech (o https://supabase.com).
+2. Crea un proyecto → copia la **connection string** (postgresql://...).
+3. Pégala en `.env` como `DATABASE_URL`.
 
-**Opción B — Docker local:** instalá Docker Desktop y corré:
+**Opción B — Docker local:** instala Docker Desktop y ejecuta:
 ```bash
 docker run --name cavalocal-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=cavalocal -p 5432:5432 -d postgres:16
 ```
 
-**Opción C — PostgreSQL para Windows:** instalá desde https://www.postgresql.org/download/windows/
-y creá una base `cavalocal`.
+**Opción C — PostgreSQL para Windows:** instala desde https://www.postgresql.org/download/windows/
+y crea una base `cavalocal`.
 
 ## 2) Configurar y arrancar
 ```bash
 cd backend
-cp .env.example .env          # poné tu DATABASE_URL y un JWT_SECRET
+cp .env.example .env          # coloca tu DATABASE_URL y un JWT_SECRET
 npm install
 npx prisma generate
 npx prisma migrate dev --name init   # crea las tablas
@@ -49,7 +49,7 @@ npm run start:dev
 - Health: http://localhost:3001/health
 
 ## Conectar la app
-En `app/.env` poné `EXPO_PUBLIC_API_BASE_URL=http://localhost:3001` y reemplazá el
+En `app/.env` coloca `EXPO_PUBLIC_API_BASE_URL=http://localhost:3001` y reemplaza el
 mock de `app/src/auth/AuthContext.tsx` por llamadas a `POST /auth/login` y
 `POST /auth/register`, y el catálogo (`app/src/data/selectors.ts`) por `GET /wines`.
 

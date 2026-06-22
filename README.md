@@ -1,6 +1,6 @@
 # CavaLocal
 
-Marketplace intermediario de vinos para Caracas: descubrí etiquetas, compará precios entre tiendas y **reservá** en la más cercana pagando una **seña online**; la **factura llega por correo**.
+Marketplace intermediario de vinos para Caracas: descubre etiquetas, compara precios entre tiendas y **reserva** en la más cercana pagando una **seña online**; la **factura llega por correo**.
 
 > Proyecto en desarrollo. Identidad: burdeos `#641E2E` · dorado `#C2912B` · crema `#F3ECDD`.
 
@@ -24,12 +24,12 @@ Marketplace intermediario de vinos para Caracas: descubrí etiquetas, compará p
 ## Cómo correrlo en local
 
 ### 1. Base de datos (PostgreSQL)
-Necesitás un PostgreSQL accesible (local o en la nube, p. ej. Neon/Supabase). Creá una base `cavalocal`.
+Necesitas un PostgreSQL accesible (local o en la nube, p. ej. Neon/Supabase). Crea una base `cavalocal`.
 
 ### 2. Backend (NestJS)
 ```bash
 cd backend
-cp .env.example .env          # completá las variables (ver abajo)
+cp .env.example .env          # completa las variables (ver abajo)
 npm install
 npx prisma migrate deploy     # aplica las migraciones
 npx prisma generate
@@ -49,7 +49,7 @@ Variables de entorno (`backend/.env`):
 ```bash
 npx http-server web -p 8080   # http://localhost:8080
 ```
-El front consume el backend en `http://localhost:3001` (configurable en `web/js/config.js`). Pegá ahí también tu `GOOGLE_CLIENT_ID`.
+El front consume el backend en `http://localhost:3001` (configurable en `web/js/config.js`). Pega ahí también tu `GOOGLE_CLIENT_ID`.
 
 ## Tests
 ```bash

@@ -180,9 +180,9 @@ import { openCheckout } from './checkout.js';
   // ---------- carrusel + tiles promocionales (estáticos: se montan una vez) ----------
   var SLIDES = [
     { img: 'img/promo-1.webp', kicker: 'BODEGA DESTACADA', title: 'Pomar, de Carora a tu copa', subtitle: 'El vino venezolano que conquista paladares.', ctaLabel: 'Ver Pomar', ctaAttr: 'data-cat="Pomar"' },
-    { img: 'img/promo-4.webp', kicker: 'AL MEJOR PRECIO', title: 'Comparamos por vos', subtitle: 'El mismo vino, el precio más bajo de tu zona.', ctaLabel: 'Comparar precios', ctaAttr: 'data-cat=""' },
-    { img: 'img/promo-2.webp', kicker: 'RESERVÁ ONLINE', title: 'Tu próxima botella te espera', subtitle: 'Elegí, reservá con una seña y retirá cuando quieras.', ctaLabel: 'Explorar vinos', ctaAttr: 'data-cat=""' },
-    { img: 'img/promo-5.webp', kicker: 'HECHO EN VENEZUELA', title: 'Orgullo nacional en tu copa', subtitle: 'Apoyá lo local: etiquetas venezolanas seleccionadas.', ctaLabel: 'Ver nacionales', ctaAttr: 'data-cat="Venezuela"' },
+    { img: 'img/promo-4.webp', kicker: 'AL MEJOR PRECIO', title: 'Comparamos por ti', subtitle: 'El mismo vino, el precio más bajo de tu zona.', ctaLabel: 'Comparar precios', ctaAttr: 'data-cat=""' },
+    { img: 'img/promo-2.webp', kicker: 'RESERVA ONLINE', title: 'Tu próxima botella te espera', subtitle: 'Elige, reserva con una seña y retira cuando quieras.', ctaLabel: 'Explorar vinos', ctaAttr: 'data-cat=""' },
+    { img: 'img/promo-5.webp', kicker: 'HECHO EN VENEZUELA', title: 'Orgullo nacional en tu copa', subtitle: 'Apoya lo local: etiquetas venezolanas seleccionadas.', ctaLabel: 'Ver nacionales', ctaAttr: 'data-cat="Venezuela"' },
   ];
   var TILES = [
     { img: 'img/tile-1.webp', tk: 'TINTOS', title: 'Cuerpo y carácter', attr: 'data-cat="Tinto"' },
@@ -274,7 +274,7 @@ import { openCheckout } from './checkout.js';
   }
 
   function emptyState() {
-    return '<div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:40px">🍷</div><h3 style="font-family:var(--font-display);color:var(--wine);margin:8px 0">No encontramos vinos</h3><p>Probá con otra cepa, bodega, país o quitá filtros.</p></div>';
+    return '<div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:40px">🍷</div><h3 style="font-family:var(--font-display);color:var(--wine);margin:8px 0">No encontramos vinos</h3><p>Prueba con otra cepa, bodega, país o quita filtros.</p></div>';
   }
 
   function mapView(list) {

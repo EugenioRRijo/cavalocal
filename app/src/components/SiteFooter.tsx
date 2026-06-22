@@ -23,7 +23,7 @@ export function SiteFooter() {
       {/* Newsletter */}
       <View style={[styles.newsletter, !isWide && styles.newsletterCol]}>
         <View style={{ flex: isWide ? 1 : undefined }}>
-          <Text style={styles.nlTitle}>SUMATE AL CLUB CAVALOCAL</Text>
+          <Text style={styles.nlTitle}>SÚMATE AL CLUB CAVALOCAL</Text>
           <Text style={styles.nlSub}>Ofertas, novedades y catas exclusivas en tu correo.</Text>
         </View>
         <View style={styles.nlForm}>
@@ -45,7 +45,7 @@ export function SiteFooter() {
         <View style={styles.brandCol}>
           <Wordmark size={26} color={colors.white} />
           <Text style={styles.brandText}>
-            Tu guía de vinos local. Encontrá tu etiqueta ideal al mejor precio, cerca de ti, en Caracas.
+            Tu guía de vinos local. Encuentra tu etiqueta ideal al mejor precio, cerca de ti, en Caracas.
           </Text>
         </View>
         {COLS.map((c) => (
