@@ -673,6 +673,7 @@ export function openCheckout(wine, userLoc) {
     customer: { name: user ? user.name : '', email: user ? user.email : '', phone: '' },
     pickupDate: '', orderType: 'pickup', deliveryAddress: '',
     userLoc: userLoc || DEFAULT_LOC,
+    deliveryPoint: { ...(userLoc || DEFAULT_LOC) },
     step: 1, reservation: null, _miniMap: null,
   };
   render();
@@ -687,12 +688,13 @@ function stepDatos() {
   const c = st.customer;
   const isDel = st.orderType === 'delivery';
   const store = st.offers[st.offerIdx];
-  const km = round1Km(haversineKm(store.lat, store.lng, st.userLoc.lat, st.userLoc.lng));
+  const km = round1Km(haversineKm(store.lat, store.lng, st.deliveryPoint.lat, st.deliveryPoint.lng));
   const fee = deliveryFee(km);
   const deliveryBlock = isDel
     ? '<div class="co-field"><label>Dirección de entrega</label><input id="co-addr" value="' + esc(st.deliveryAddress) + '" placeholder="Calle, edificio, referencia" /></div>' +
+      '<div class="co-minihint">Arrastra el pin para marcar el punto exacto de entrega.</div>' +
       '<div id="co-mini" class="co-mini"></div>' +
-      '<div class="co-deliv-note">Envío estimado a ' + km + ' km: <b>' + money(fee) + '</b> · el total final lo confirma el sistema.</div>'
+      '<div class="co-deliv-note" id="co-feenote">Envío estimado a ' + km + ' km: <b>' + money(fee) + '</b> · el total final lo confirma el sistema.</div>'
     : '';
   return prodCard() +
     '<div class="co-seg"><button class="co-segbtn ' + (!isDel ? 'on' : '') + '" data-ot="pickup">Retiro en tienda</button>' +
@@ -716,8 +718,15 @@ function mountMiniMap() {
   const map = L.map(el); st._miniMap = map;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
   L.marker([store.lat, store.lng]).addTo(map).bindPopup('Sede: ' + esc(store.storeName));
-  L.circleMarker([st.userLoc.lat, st.userLoc.lng], { radius: 8, color: '#641E2E', fillColor: '#641E2E', fillOpacity: 1 }).addTo(map).bindPopup('Tu ubicación');
-  map.fitBounds([[store.lat, store.lng], [st.userLoc.lat, st.userLoc.lng]], { padding: [25, 25], maxZoom: 15 });
+  const me = L.marker([st.deliveryPoint.lat, st.deliveryPoint.lng], { draggable: true }).addTo(map).bindPopup('Punto de entrega (arrástrame)');
+  me.on('dragend', function () {
+    const p = me.getLatLng();
+    st.deliveryPoint = { lat: p.lat, lng: p.lng };
+    const km = round1Km(haversineKm(store.lat, store.lng, p.lat, p.lng));
+    const note = document.getElementById('co-feenote');
+    if (note) note.innerHTML = 'Envío estimado a ' + km + ' km: <b>' + money(deliveryFee(km)) + '</b> · el total final lo confirma el sistema.';
+  });
+  map.fitBounds([[store.lat, store.lng], [st.deliveryPoint.lat, st.deliveryPoint.lng]], { padding: [25, 25], maxZoom: 15 });
 }
 ```
 
@@ -779,8 +788,8 @@ Reemplazar el handler `$('#co-next').onclick` del paso 2 por:
         };
         if (st.orderType === 'delivery') {
           payload.deliveryAddress = st.deliveryAddress;
-          payload.deliveryLat = st.userLoc.lat;
-          payload.deliveryLng = st.userLoc.lng;
+          payload.deliveryLat = st.deliveryPoint.lat;
+          payload.deliveryLng = st.deliveryPoint.lng;
         }
         st.reservation = await api.createReservation(payload);
         if (st._miniMap) { st._miniMap.remove(); st._miniMap = null; }
@@ -804,6 +813,7 @@ Agregar al final de `web/css/checkout.css`:
 .co-seg { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 50px; padding: 4px; margin-bottom: 16px; }
 .co-segbtn { flex: 1; padding: 9px; border-radius: 50px; font-weight: 700; font-size: 13px; color: var(--muted); }
 .co-segbtn.on { background: var(--wine); color: #fff; }
+.co-minihint { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .co-mini { height: 180px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); margin-bottom: 10px; z-index: 0; }
 .co-deliv-note { font-size: 13px; color: var(--muted); background: var(--surface); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px; }
 .co-deliv-note b { color: var(--wine); }

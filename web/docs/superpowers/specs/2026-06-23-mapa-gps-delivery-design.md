@@ -22,6 +22,7 @@ Hoy la pestaña **"Mapa"** es una maqueta (pines sobre una caja decorada, sin ti
 - **Costo de envío** (cliente): **`$0.80 + $0.35 × km`** redondeado a 2 decimales, distancia Haversine sede→usuario, **clamp de km a [0, 50]** por sanidad. Referencias: 1 km → $1.15, 3 km → $1.85, 5 km → $2.55. Siempre positivo (mínimo $0.80).
 - **Seña del delivery:** **20% del total CON envío**; el 80% restante se paga en efectivo al recibir.
 - **El mapa real va** en la pestaña "Mapa" **y** como mini-mapa en el paso de delivery del checkout.
+- **Punto de entrega ajustable:** en el mini-mapa, el pin de "tu ubicación" es **arrastrable**; al moverlo, el punto de entrega (lat/lng) se actualiza y el **costo de envío se recalcula** en vivo. Por defecto arranca en la ubicación GPS/fallback.
 
 ### No-objetivos (YAGNI)
 - No tracking del repartidor en vivo, ni ruta/ETA, ni geocoding de direcciones (la dirección es texto libre; el punto de entrega es la ubicación GPS/marcador).
@@ -74,8 +75,8 @@ Se respeta la arquitectura por capas del backend y el patrón de ES modules del 
 - **Retiro:** flujo actual (sin envío; resumen con seña 20% / saldo 80% al retirar).
 - **Delivery:**
   - Campo **dirección** (texto libre, requerido) + nota "te lo llevamos a tu ubicación".
-  - **Mini-mapa** Leaflet mostrando el marcador de la **sede** y el de **tu ubicación** (GPS/fallback), con la distancia.
-  - **Costo de envío** = `round2(0.80 + 0.35 × clampKm)` donde `clampKm = min(50, max(0, haversineKm(sede, userLoc)))`.
+  - **Mini-mapa** Leaflet mostrando el marcador de la **sede** y el de **tu punto de entrega** (arrancando en GPS/fallback). El **pin de entrega es arrastrable**: al soltarlo, se actualiza el punto y se recalcula el envío en vivo.
+  - **Costo de envío** = `round2(0.80 + 0.35 × clampKm)` donde `clampKm = min(50, max(0, haversineKm(sede, puntoDeEntrega)))`.
   - El front muestra el costo estimado, pero el **backend recalcula y manda el valor autoritativo** en `POST /reservations` (no se confía en el cliente).
 - **Resumen (delivery):** Subtotal → −5% primera reserva → Productos → **Envío** → **Total** → **Seña a pagar ahora (20%)** → **Resto a pagar al recibir (efectivo)**.
 - `POST /reservations` ahora envía: `orderType` ('pickup'|'delivery'), y si delivery: `deliveryAddress`, `deliveryLat`, `deliveryLng`.
