@@ -26,6 +26,9 @@ coverage/
 *.pdf
 Fotos/
 
+# ---------- Scratch de orquestación (briefs/reports/reviews SDD) ----------
+.superpowers/
+
 # ---------- SO / editores ----------
 Thumbs.db
 .DS_Store
