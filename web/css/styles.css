@@ -143,7 +143,7 @@ ul { list-style: none; }
 .view-all { color: var(--wine); font-weight: 700; font-size: 14px; }
 
 /* ---------- Best sellers rail ---------- */
-.rail { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+.rail { display: flex; gap: 16px; overflow-x: auto; padding: 10px 2px 14px; scroll-snap-type: x mandatory; }
 .rail::-webkit-scrollbar { height: 8px; }
 .rail::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
 .rail .card { flex: 0 0 180px; scroll-snap-align: start; }
@@ -174,11 +174,11 @@ ul { list-style: none; }
 .sortbar .mode.active { background: var(--wine); color: #fff; }
 
 /* ---------- Product grid ---------- */
-.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 6px 2px; }
 
 /* ---------- Product card ---------- */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column; transition: var(--transition); position: relative; }
-.card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--gold); }
+.card:hover { transform: translateY(-5px); box-shadow: 0 10px 24px rgba(42,32,36,0.16); border-color: var(--gold); }
 .card .card-img { height: 160px; background: var(--thumb); display: flex; align-items: center; justify-content: center; position: relative; }
 .card .card-img svg { height: 78%; }
 .card .wish { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center; }
