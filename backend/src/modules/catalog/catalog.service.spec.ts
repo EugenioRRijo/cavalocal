@@ -53,3 +53,26 @@ describe('CatalogService.listWines', () => {
     expect(res.page).toBe(1);
   });
 });
+
+describe('CatalogService.facets', () => {
+  let service: CatalogService;
+  const prisma: any = { wine: { groupBy: jest.fn() } };
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const moduleRef = await Test.createTestingModule({
+      providers: [CatalogService, { provide: PrismaService, useValue: prisma }],
+    }).compile();
+    service = moduleRef.get(CatalogService);
+  });
+
+  it('devuelve conteos por tipo/país/cepa ordenados desc', async () => {
+    prisma.wine.groupBy
+      .mockResolvedValueOnce([{ type: 'Tinto', _count: { _all: 5 } }, { type: 'Blanco', _count: { _all: 9 } }])
+      .mockResolvedValueOnce([{ country: 'Argentina', _count: { _all: 7 } }])
+      .mockResolvedValueOnce([{ grape: 'Malbec', _count: { _all: 4 } }]);
+    const f = await service.facets();
+    expect(f.types[0]).toEqual({ key: 'Blanco', count: 9 });
+    expect(f.countries[0]).toEqual({ key: 'Argentina', count: 7 });
+    expect(f.grapes[0]).toEqual({ key: 'Malbec', count: 4 });
+  });
+});

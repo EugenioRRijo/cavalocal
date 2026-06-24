@@ -14,6 +14,18 @@ export class CatalogController {
     return this.catalogService.listWines(query);
   }
 
+  @Get('facets')
+  @ApiOperation({ summary: 'Conteos por tipo, país y cepa para filtros' })
+  facets() {
+    return this.catalogService.facets();
+  }
+
+  @Get('bestsellers')
+  @ApiOperation({ summary: 'Top de vinos por puntaje de crítica' })
+  bestsellers() {
+    return this.catalogService.bestsellers(10);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Ficha de un vino con precios por tienda y referencias' })
   get(@Param('id') id: string) {

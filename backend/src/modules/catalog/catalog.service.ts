@@ -121,4 +121,34 @@ export class CatalogService {
       aging: wine.aging,
     };
   }
+
+  async facets() {
+    const [types, countries, grapes] = await Promise.all([
+      this.prisma.wine.groupBy({ by: ['type'], _count: { _all: true } }),
+      this.prisma.wine.groupBy({ by: ['country'], _count: { _all: true } }),
+      this.prisma.wine.groupBy({ by: ['grape'], _count: { _all: true } }),
+    ]);
+    const fmt = (rows: any[], key: string, limit?: number) => {
+      const out = rows
+        .filter((r) => r[key])
+        .map((r) => ({ key: r[key] as string, count: r._count._all as number }))
+        .sort((a, b) => b.count - a.count);
+      return limit ? out.slice(0, limit) : out;
+    };
+    return {
+      types: fmt(types, 'type'),
+      countries: fmt(countries, 'country', 20),
+      grapes: fmt(grapes, 'grape', 30),
+    };
+  }
+
+  async bestsellers(limit = 10) {
+    const wines = await this.prisma.wine.findMany({
+      orderBy: [{ criticScore: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }],
+      take: limit,
+      include: { availabilities: { include: { establishment: true } } },
+    });
+    const aggMap = await this.aggregateReviews(wines.map((w) => w.id));
+    return wines.map((w) => this.toCard(w, aggMap.get(w.id)));
+  }
 }
