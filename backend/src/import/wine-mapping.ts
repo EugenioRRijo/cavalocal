@@ -64,7 +64,7 @@ export function parseVintage(name: string): number | null {
   const m = (name || '').match(/\b(19\d{2}|20\d{2})\b/);
   if (!m) return null;
   const y = Number(m[1]);
-  return y >= 1900 && y <= 2025 ? y : null;
+  return y >= 1900 && y <= new Date().getFullYear() + 1 ? y : null;
 }
 
 const WINERY_STOP = [
