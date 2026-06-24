@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CatalogService } from './catalog.service';
+import { ListWinesQueryDto } from './dto/list-wines-query.dto';
 
 @ApiTags('catalog')
 @Controller('wines')
@@ -8,14 +9,13 @@ export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Listar/buscar vinos (con disponibilidad por establecimiento)' })
-  @ApiQuery({ name: 'q', required: false, description: 'Texto: nombre, cepa, origen o bodega' })
-  list(@Query('q') q?: string) {
-    return this.catalogService.listWines(q);
+  @ApiOperation({ summary: 'Catálogo paginado de vinos (filtros, orden, agregado de reseñas)' })
+  list(@Query() query: ListWinesQueryDto) {
+    return this.catalogService.listWines(query);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Ficha de un vino con sus precios por establecimiento' })
+  @ApiOperation({ summary: 'Ficha de un vino con precios por tienda y referencias' })
   get(@Param('id') id: string) {
     return this.catalogService.getWine(id);
   }
