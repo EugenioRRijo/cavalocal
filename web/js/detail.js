@@ -79,7 +79,7 @@ function render() {
       '<button class="dt-close" aria-label="Cerrar">✕</button>' +
       '<div class="dt-hero"><div class="dt-img">' + media(wine) + '</div>' +
         '<div class="dt-hero-info"><div class="dt-winery">' + esc(wine.wineryName) + '</div>' +
-        '<h3>' + esc(wine.name) + (wine.vintage ? ' ' + wine.vintage : '') + '</h3>' +
+        '<h3>' + esc(wine.name) + (wine.vintage ? ' ' + esc(wine.vintage) : '') + '</h3>' +
         '<div class="dt-price">desde <b>' + money(wine.bestPrice) + '</b></div>' +
         '<button class="dt-reserve" id="dt-reserve">Reservar</button></div></div>' +
       '<div class="dt-body">' + referenciasHtml(wine) + offersHtml(wine) + reviewsHtml(reviews) + formHtml() + '</div>' +
@@ -92,7 +92,7 @@ function bind() {
   $('#detail .dt-close').onclick = close;
   $('#detail .dt-bg').onclick = (e) => { if (e.target.classList.contains('dt-bg')) close(); };
   const resBtn = $('#dt-reserve');
-  if (resBtn) resBtn.onclick = () => { close(); openCheckout(toCheckoutWine(current.wine), null); };
+  if (resBtn) resBtn.onclick = () => { const w = current.wine; close(); openCheckout(toCheckoutWine(w), null); };
 
   const starsBox = $('#dt-stars');
   if (starsBox) {
