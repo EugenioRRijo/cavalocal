@@ -54,8 +54,10 @@ function validateLive() {
 }
 
 function redirectAfterAuth() {
-  const pending = takePendingReturn();
-  window.location.href = pending ? 'index.html?' + pending : 'index.html';
+  // Consumimos y descartamos cualquier reserva pendiente: tras autenticarse
+  // el usuario aterriza en el catálogo, sin abrir el checkout automáticamente.
+  takePendingReturn();
+  window.location.href = 'index.html';
 }
 
 async function submit(e) {

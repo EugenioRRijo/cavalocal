@@ -386,13 +386,6 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
       if (chip) chip.textContent = loc.source === 'gps' ? '📍 Tu ubicación' : '📍 Caracas (aprox.)';
     });
 
-    var ret = new URLSearchParams(location.search).get('return');
-    if (ret && ret.indexOf('reserve:') === 0 && getUser()) {
-      var rid = ret.slice('reserve:'.length);
-      var w = state.raw.filter(function (x) { return x.id === rid; })[0];
-      if (w) openCheckout(w, state.userLoc);
-      history.replaceState(null, '', 'index.html');
-    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
