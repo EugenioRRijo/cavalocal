@@ -2,23 +2,24 @@ import * as api from './api.js';
 import { getUser } from './store.js';
 import { money } from './money.js';
 import { luhnValid, formatCardNumber, expiryValid, cvvValid } from './payment-utils.js';
+import { deliveryFee } from './delivery.js';
+import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
 
 const $ = (s, r) => (r || document).querySelector(s);
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 let st = null;
 
-export function openCheckout(wine) {
+export function openCheckout(wine, userLoc) {
   const user = getUser();
   const offers = (wine.offers || []).slice().sort((a, b) => a.price - b.price);
   st = {
-    wine, offers,
-    offerIdx: 0,
-    quantity: 1,
+    wine, offers, offerIdx: 0, quantity: 1,
     customer: { name: user ? user.name : '', email: user ? user.email : '', phone: '' },
-    pickupDate: '',
-    step: 1,
-    reservation: null,
+    pickupDate: '', orderType: 'pickup', deliveryAddress: '',
+    userLoc: userLoc || DEFAULT_LOC,
+    deliveryPoint: { ...(userLoc || DEFAULT_LOC) },
+    step: 1, reservation: null, _miniMap: null,
   };
   render();
 }
@@ -62,24 +63,61 @@ function stepReserva() {
 
 function stepDatos() {
   const c = st.customer;
+  const isDel = st.orderType === 'delivery';
+  const store = st.offers[st.offerIdx];
+  const km = round1Km(haversineKm(store.lat, store.lng, st.deliveryPoint.lat, st.deliveryPoint.lng));
+  const fee = deliveryFee(km);
+  const deliveryBlock = isDel
+    ? '<div class="co-field"><label>Dirección de entrega</label><input id="co-addr" value="' + esc(st.deliveryAddress) + '" placeholder="Calle, edificio, referencia" /></div>' +
+      '<div class="co-minihint">Arrastra el pin para marcar el punto exacto de entrega.</div>' +
+      '<div id="co-mini" class="co-mini"></div>' +
+      '<div class="co-deliv-note" id="co-feenote">Envío estimado a ' + km + ' km: <b>' + money(fee) + '</b> · el total final lo confirma el sistema.</div>'
+    : '';
   return prodCard() +
+    '<div class="co-seg"><button class="co-segbtn ' + (!isDel ? 'on' : '') + '" data-ot="pickup">Retiro en tienda</button>' +
+    '<button class="co-segbtn ' + (isDel ? 'on' : '') + '" data-ot="delivery">Delivery</button></div>' +
     '<div class="co-field"><label>Nombre</label><input id="co-name" value="' + esc(c.name) + '" placeholder="Tu nombre" /></div>' +
     '<div class="co-field"><label>Correo (te llega la factura)</label><input id="co-email" type="email" value="' + esc(c.email) + '" placeholder="tucorreo@ejemplo.com" /></div>' +
     '<div class="co-row"><div class="co-field"><label>Teléfono</label><input id="co-phone" value="' + esc(c.phone) + '" placeholder="Opcional" /></div>' +
-    '<div class="co-field"><label>Fecha de retiro</label><input id="co-date" type="date" value="' + esc(st.pickupDate) + '" /></div></div>' +
+    '<div class="co-field"><label>' + (isDel ? 'Fecha de entrega' : 'Fecha de retiro') + '</label><input id="co-date" type="date" value="' + esc(st.pickupDate) + '" /></div></div>' +
+    deliveryBlock +
     '<div class="co-error co-hide" id="co-err"></div>' +
-    '<div class="co-actions"><button class="co-btn ghost" id="co-back">Atrás</button><button class="co-btn prim" id="co-next">Ir a pagar</button></div>';
+    '<div class="co-actions"><button class="co-btn ghost" id="co-back">Atrás</button><button class="co-btn prim" id="co-next">' + (isDel ? 'Ir a pagar la seña' : 'Ir a pagar') + '</button></div>';
+}
+
+function round1Km(n) { return Math.round(n * 10) / 10; }
+
+function mountMiniMap() {
+  const el = document.getElementById('co-mini');
+  if (!el || typeof L === 'undefined') { if (el) el.innerHTML = '<div style="padding:14px;color:var(--muted);font-size:13px">Mapa no disponible (sin conexión).</div>'; return; }
+  if (st._miniMap) { st._miniMap.remove(); st._miniMap = null; }
+  const store = st.offers[st.offerIdx];
+  const map = L.map(el); st._miniMap = map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  L.marker([store.lat, store.lng]).addTo(map).bindPopup('Sede: ' + esc(store.storeName));
+  const me = L.marker([st.deliveryPoint.lat, st.deliveryPoint.lng], { draggable: true }).addTo(map).bindPopup('Punto de entrega (arrástrame)');
+  me.on('dragend', function () {
+    const p = me.getLatLng();
+    st.deliveryPoint = { lat: p.lat, lng: p.lng };
+    const km = round1Km(haversineKm(store.lat, store.lng, p.lat, p.lng));
+    const note = document.getElementById('co-feenote');
+    if (note) note.innerHTML = 'Envío estimado a ' + km + ' km: <b>' + money(deliveryFee(km)) + '</b> · el total final lo confirma el sistema.';
+  });
+  map.fitBounds([[store.lat, store.lng], [st.deliveryPoint.lat, st.deliveryPoint.lng]], { padding: [25, 25], maxZoom: 15 });
 }
 
 function summary(r) {
   const disc = r.discountPct > 0
     ? '<div class="ln disc"><span>Descuento primera reserva (' + r.discountPct + '%)</span><span>-' + money(r.discountAmount) + '</span></div>' : '';
+  const envio = Number(r.deliveryFee) > 0
+    ? '<div class="ln"><span>Envío</span><span>' + money(r.deliveryFee) + '</span></div>' : '';
+  const saldoLabel = r.orderType === 'delivery' ? 'Resto a pagar al recibir (efectivo)' : 'Saldo al retirar (80%)';
   return '<div class="co-summary">' +
     '<div class="ln"><span>Subtotal (' + r.quantity + ' × ' + money(r.unitPrice) + ')</span><span>' + money(r.subtotal) + '</span></div>' +
-    disc +
+    disc + envio +
     '<div class="ln tot"><span>Total</span><span>' + money(r.total) + '</span></div>' +
     '<div class="ln dep"><span>Seña a pagar ahora (20%)</span><span>' + money(r.deposit) + '</span></div>' +
-    '<div class="ln bal"><span>Saldo al retirar (80%)</span><span>' + money(r.balance) + '</span></div></div>';
+    '<div class="ln bal"><span>' + saldoLabel + '</span><span>' + money(r.balance) + '</span></div></div>';
 }
 
 function stepPago() {
@@ -119,23 +157,44 @@ function bind() {
   }
 
   if (st.step === 2) {
+    document.querySelectorAll('.co-segbtn').forEach(function (b) {
+      b.onclick = function () {
+        st.customer.name = ($('#co-name') || {}).value || st.customer.name;
+        st.customer.email = ($('#co-email') || {}).value || st.customer.email;
+        st.customer.phone = ($('#co-phone') || {}).value || st.customer.phone;
+        st.deliveryAddress = ($('#co-addr') || {}).value || st.deliveryAddress;
+        st.orderType = b.getAttribute('data-ot');
+        render();
+      };
+    });
+    if (st.orderType === 'delivery') setTimeout(mountMiniMap, 0);
     $('#co-next').onclick = async () => {
       st.customer.name = $('#co-name').value.trim();
       st.customer.email = $('#co-email').value.trim();
       st.customer.phone = $('#co-phone').value.trim();
       st.pickupDate = $('#co-date').value;
+      if (st.orderType === 'delivery') st.deliveryAddress = ($('#co-addr').value || '').trim();
       if (!st.customer.name) return showErr('Ingresa tu nombre.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(st.customer.email)) return showErr('Ingresa un correo válido.');
+      if (st.orderType === 'delivery' && !st.deliveryAddress) return showErr('Ingresa la dirección de entrega.');
       const offer = st.offers[st.offerIdx];
       const btn = $('#co-next'); btn.disabled = true; btn.textContent = 'Creando reserva…';
       try {
-        st.reservation = await api.createReservation({
+        const payload = {
           wineId: st.wine.id, establishmentId: offer.storeId, quantity: st.quantity,
           customer: { name: st.customer.name, email: st.customer.email, phone: st.customer.phone || undefined },
           pickupDate: st.pickupDate || undefined,
-        });
+          orderType: st.orderType,
+        };
+        if (st.orderType === 'delivery') {
+          payload.deliveryAddress = st.deliveryAddress;
+          payload.deliveryLat = st.deliveryPoint.lat;
+          payload.deliveryLng = st.deliveryPoint.lng;
+        }
+        st.reservation = await api.createReservation(payload);
+        if (st._miniMap) { st._miniMap.remove(); st._miniMap = null; }
         st.step = 3; render();
-      } catch (err) { btn.disabled = false; btn.textContent = 'Ir a pagar'; showErr(err.message); }
+      } catch (err) { btn.disabled = false; btn.textContent = st.orderType === 'delivery' ? 'Ir a pagar la seña' : 'Ir a pagar'; showErr(err.message); }
     };
   }
 
@@ -169,7 +228,9 @@ function printInvoice(r) {
   w.document.write('<html><head><title>Factura ' + esc(r.invoiceNumber) + '</title></head><body style="font-family:Arial;max-width:560px;margin:24px auto;color:#2A2024">' +
     '<h2 style="color:#641E2E">CavaLocal — Factura ' + esc(r.invoiceNumber) + '</h2>' +
     '<p>' + esc(r.customerName) + ' · ' + esc(r.customerEmail) + '</p>' +
-    '<p><b>' + esc(r.wineName) + '</b> × ' + r.quantity + ' — retirar en ' + esc(r.storeName) + ' (' + esc(r.storeAddress) + ')</p>' +
+    (r.orderType === 'delivery'
+      ? '<p><b>' + esc(r.wineName) + '</b> × ' + r.quantity + ' — Delivery a ' + esc(r.deliveryAddress || '') + '</p>'
+      : '<p><b>' + esc(r.wineName) + '</b> × ' + r.quantity + ' — retirar en ' + esc(r.storeName) + ' (' + esc(r.storeAddress) + ')</p>') +
     '<table style="width:100%;border-collapse:collapse">' +
     '<tr><td>Subtotal</td><td style="text-align:right">' + money(r.subtotal) + '</td></tr>' + disc +
     '<tr><td><b>Total</b></td><td style="text-align:right"><b>' + money(r.total) + '</b></td></tr>' +
