@@ -121,24 +121,10 @@ el.form.addEventListener('submit', submit);
 if (new URLSearchParams(location.search).has('register')) setMode('register');
 window.addEventListener('load', () => setTimeout(initGoogle, 300));
 
-// ---------- cinemagraph del lado inmersivo (loop de la escena del vino sirviéndose) ----------
-(function cinemagraph() {
-  const img = document.getElementById('login-cine');
-  if (!img) return;
+// ---------- media del aside: respetar prefers-reduced-motion ----------
+(function asideMedia() {
+  const v = document.getElementById('login-cine');
+  if (!v || typeof v.pause !== 'function') return;
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) return; // se queda el primer fotograma estático
-  const FRAMES = 18;
-  const srcs = [];
-  for (let i = 0; i < FRAMES; i++) srcs.push('img/pour/p' + String(i).padStart(2, '0') + '.webp');
-  let loaded = 0;
-  srcs.forEach((s) => { const im = new Image(); im.onload = im.onerror = () => { if (++loaded === FRAMES) start(); }; im.src = s; });
-  let tick = 0;
-  function start() {
-    const period = (FRAMES - 1) * 2; // ping-pong: 0..17..1
-    setInterval(() => {
-      const p = tick % period;
-      img.src = srcs[p < FRAMES ? p : period - p];
-      tick++;
-    }, 70);
-  }
+  if (reduce) { try { v.removeAttribute('autoplay'); v.pause(); } catch (_) {} }
 })();

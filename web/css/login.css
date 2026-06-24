@@ -17,7 +17,7 @@
 }
 .login-aside-img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-  transform: scale(1.06); /* el movimiento lo aporta el cinemagraph (loop de fotogramas) */
+  transform: scale(1.04); /* leve zoom; el movimiento lo aporta el <video> en bucle */
 }
 /* textura sutil para que la foto no se sienta plana */
 .login-aside-grain {
