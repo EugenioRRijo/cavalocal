@@ -6,11 +6,12 @@ import { mountCarousel } from './carousel.js';
 import { getWines } from './api.js';
 import { getUser, getToken, logout, setPendingReturn } from './store.js';
 import { openCheckout } from './checkout.js';
+import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
 
 (function () {
   'use strict';
 
-  var USER_LOC = { lat: 10.497, lng: -66.854 };
+  var USER_LOC = { lat: DEFAULT_LOC.lat, lng: DEFAULT_LOC.lng, source: 'default' };
 
   var CATEGORIES = [
     { label: 'Todos', term: '' },
@@ -40,16 +41,14 @@ import { openCheckout } from './checkout.js';
     token: getToken(),
     user: getUser(),
     loaded: false,
+    apiWines: [],
+    userLoc: USER_LOC,
   };
 
   // ---------- utils ----------
   function $(s, r) { return (r || document).querySelector(s); }
   function rad(d) { return (d * Math.PI) / 180; }
-  function haversine(aLat, aLng, bLat, bLng) {
-    var dLat = rad(bLat - aLat), dLng = rad(bLng - aLng);
-    var h = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(rad(aLat)) * Math.cos(rad(bLat));
-    return 6371 * 2 * Math.asin(Math.sqrt(h));
-  }
+  function haversine(aLat, aLng, bLat, bLng) { return haversineKm(aLat, aLng, bLat, bLng); }
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function money(n) { return '$' + Number(n).toFixed(2); }
   function round1(n) { return Math.round(n * 10) / 10; }
@@ -81,7 +80,7 @@ import { openCheckout } from './checkout.js';
       return {
         storeId: e.id, storeName: e.name, lat: e.lat, lng: e.lng,
         price: Number(a.price), status: a.status,
-        dist: round1(haversine(USER_LOC.lat, USER_LOC.lng, e.lat, e.lng)), best: false,
+        dist: round1(haversine(state.userLoc.lat, state.userLoc.lng, e.lat, e.lng)), best: false,
       };
     }).sort(function (x, y) { return x.price - y.price; });
     if (offers.length) offers[0].best = true;
@@ -128,9 +127,10 @@ import { openCheckout } from './checkout.js';
 
   async function loadWines() {
     try {
-      state.raw = (await getWines()).map(transform);
+      state.apiWines = await getWines();
+      state.raw = state.apiWines.map(transform);
     } catch (e) {
-      state.raw = [];
+      state.apiWines = []; state.raw = [];
       console.warn('No se pudo cargar el backend:', e);
     }
     state.loaded = true;
@@ -277,25 +277,47 @@ import { openCheckout } from './checkout.js';
     return '<div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:40px">🍷</div><h3 style="font-family:var(--font-display);color:var(--wine);margin:8px 0">No encontramos vinos</h3><p>Prueba con otra cepa, bodega, país o quita filtros.</p></div>';
   }
 
+  var _leaf = null; // instancia Leaflet activa
   function mapView(list) {
     var stores = {};
-    list.forEach(function (w) { w.offers.forEach(function (o) { if (!stores[o.storeId] || o.price < stores[o.storeId].price) stores[o.storeId] = { name: o.storeName, price: o.price, lat: o.lat, lng: o.lng }; }); });
+    list.forEach(function (w) {
+      w.offers.forEach(function (o) {
+        if (!stores[o.storeId] || o.price < stores[o.storeId].price) {
+          stores[o.storeId] = { name: o.storeName, price: o.price, lat: o.lat, lng: o.lng };
+        }
+      });
+    });
     var arr = Object.keys(stores).map(function (k) { return stores[k]; });
     if (!arr.length) return emptyState();
-    var lats = arr.map(function (s) { return s.lat; }), lngs = arr.map(function (s) { return s.lng; });
-    var minLat = Math.min.apply(null, lats), maxLat = Math.max.apply(null, lats), minLng = Math.min.apply(null, lngs), maxLng = Math.max.apply(null, lngs);
-    var cheapest = arr.reduce(function (m, s) { return s.price < m.price ? s : m; }, arr[0]);
-    function spanX(v) { return maxLng === minLng ? 50 : 12 + ((v - minLng) / (maxLng - minLng)) * 76; }
-    function spanY(v) { return maxLat === minLat ? 50 : 18 + (1 - (v - minLat) / (maxLat - minLat)) * 64; }
-    var pins = arr.map(function (s) {
-      return '<div class="map-pin ' + (s === cheapest ? 'hot' : '') + '" style="left:' + spanX(s.lng) + '%;top:' + spanY(s.lat) + '%">' + money(s.price) + '</div>';
-    }).join('');
     var nearby = list.slice(0, 6).map(function (w) {
-      return '<div class="card" style="flex-direction:row;align-items:center;gap:12px;padding:10px;border:none;box-shadow:var(--shadow-sm)" data-detail="' + w.id + '"><div style="width:44px;height:44px;background:var(--thumb);border-radius:8px;display:flex;align-items:center;justify-content:center">' + bottleSVG(w.type) + '</div><div style="flex:1"><div class="pname" style="min-height:0">' + esc(w.name) + '</div><div style="font-size:12px;color:var(--muted)">' + (w.nearest ? w.nearest.dist + ' km · ' + esc(w.nearest.storeName || (w.nearest && w.nearest.store && w.nearest.store.name) || '') : '') + '</div></div><span class="price" style="color:var(--wine);font-weight:800">' + money(w.bestPrice) + '</span></div>';
+      return '<div class="card" style="flex-direction:row;align-items:center;gap:12px;padding:10px;border:none;box-shadow:var(--shadow-sm)" data-detail="' + w.id + '"><div style="width:44px;height:44px;background:var(--thumb);border-radius:8px;display:flex;align-items:center;justify-content:center">' + bottleSVG(w.type) + '</div><div style="flex:1"><div class="pname" style="min-height:0">' + esc(w.name) + '</div><div style="font-size:12px;color:var(--muted)">' + (w.nearest ? w.nearest.dist + ' km · ' + esc(w.nearest.storeName || '') : '') + '</div></div><span class="price" style="color:var(--wine);font-weight:800">' + money(w.bestPrice) + '</span></div>';
     }).join('');
-    return '<div class="map-box"><div class="map-canvas">' +
-      '<div style="position:absolute;left:120px;top:130px;width:14px;height:14px;border-radius:50%;background:var(--wine)"></div>' + pins +
-      '</div><div class="map-list"><b>Más cercanos primero</b>' + nearby + '</div></div>';
+    setTimeout(function () { mountLeaflet(arr); }, 0);
+    return '<div class="map-real"><div id="leafmap"></div>' +
+      '<div class="map-list"><div class="map-list-head"><b>Más cercanos primero</b> <span class="locchip" id="locchip">' +
+      (state.userLoc.source === 'gps' ? '📍 Tu ubicación' : '📍 Caracas (aprox.)') + '</span></div>' + nearby + '</div></div>';
+  }
+
+  function mountLeaflet(stores) {
+    var el = document.getElementById('leafmap');
+    if (!el || typeof L === 'undefined') { if (el) el.innerHTML = '<div style="padding:24px;color:var(--muted)">No se pudo cargar el mapa. Revisa tu conexión.</div>'; return; }
+    if (_leaf) { _leaf.remove(); _leaf = null; }
+    var map = L.map(el);
+    _leaf = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap',
+    }).addTo(map);
+    var pts = [];
+    stores.forEach(function (s) {
+      var km = round1(haversine(state.userLoc.lat, state.userLoc.lng, s.lat, s.lng));
+      L.marker([s.lat, s.lng]).addTo(map)
+        .bindPopup('<b>' + esc(s.name) + '</b><br>desde ' + money(s.price) + ' · ' + km + ' km');
+      pts.push([s.lat, s.lng]);
+    });
+    L.circleMarker([state.userLoc.lat, state.userLoc.lng], { radius: 8, color: '#641E2E', fillColor: '#641E2E', fillOpacity: 1 })
+      .addTo(map).bindPopup('Tu ubicación');
+    pts.push([state.userLoc.lat, state.userLoc.lng]);
+    map.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
   }
 
   function toggleHome() {
@@ -357,6 +379,14 @@ import { openCheckout } from './checkout.js';
     $('#view').innerHTML = '<div style="text-align:center;padding:60px;color:var(--muted)">Cargando catálogo…</div>';
     await loadWines();
     render();
+
+    getUserLocation().then(function (loc) {
+      state.userLoc = loc;
+      if (state.apiWines.length) state.raw = state.apiWines.map(transform);
+      renderToolbar(); renderView();
+      var chip = $('#locchip');
+      if (chip) chip.textContent = loc.source === 'gps' ? '📍 Tu ubicación' : '📍 Caracas (aprox.)';
+    });
 
     var ret = new URLSearchParams(location.search).get('return');
     if (ret && ret.indexOf('reserve:') === 0 && getUser()) {
