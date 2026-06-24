@@ -1,6 +1,7 @@
 import {
   deriveType, deriveCountry, parseVintage, deriveWinery, derivePrice, mapRowToWine,
 } from './wine-mapping';
+import { buildAvailabilitiesForWine } from './wine-mapping';
 
 describe('deriveType', () => {
   it('detecta espumante, blanco, rosado, fortificado y tinto por defecto', () => {
@@ -74,5 +75,33 @@ describe('mapRowToWine', () => {
   });
   it('devuelve null si no hay nombre', () => {
     expect(mapRowToWine({ name: '  ', region: 'x', variety: 'y', rating: '90', notes: '' })).toBeNull();
+  });
+});
+
+describe('buildAvailabilitiesForWine', () => {
+  const stores = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+  it('asigna entre 2 y 4 tiendas únicas por vino', () => {
+    for (let i = 0; i < 12; i++) {
+      const rows = buildAvailabilitiesForWine('w' + i, i, stores, 20);
+      const ids = rows.map((r) => r.establishmentId);
+      expect(rows.length).toBeGreaterThanOrEqual(2);
+      expect(rows.length).toBeLessThanOrEqual(4);
+      expect(new Set(ids).size).toBe(ids.length); // sin duplicados
+    }
+  });
+
+  it('precios cercanos a la base y status válido', () => {
+    const rows = buildAvailabilitiesForWine('w', 1, stores, 20);
+    rows.forEach((r) => {
+      expect(r.price).toBeGreaterThan(0);
+      expect(r.price).toBeLessThan(20 * 1.3);
+      expect(['DISPONIBLE', 'AGOTADO']).toContain(r.status);
+    });
+  });
+
+  it('es determinista', () => {
+    expect(buildAvailabilitiesForWine('w', 3, stores, 15))
+      .toEqual(buildAvailabilitiesForWine('w', 3, stores, 15));
   });
 });

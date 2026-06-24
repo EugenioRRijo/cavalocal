@@ -119,3 +119,31 @@ export function mapRowToWine(row: WineRow): MappedWine | null {
     descriptors: { source: 'wine-ratings' },
   };
 }
+
+export function buildAvailabilitiesForWine(
+  wineId: string,
+  index: number,
+  establishmentIds: string[],
+  basePrice: number,
+): Array<{ wineId: string; establishmentId: string; price: number; status: 'DISPONIBLE' | 'AGOTADO' }> {
+  const factors = [0.95, 1.0, 1.07, 1.12];
+  const count = 2 + (index % 3); // 2..4
+  const rows: Array<{ wineId: string; establishmentId: string; price: number; status: 'DISPONIBLE' | 'AGOTADO' }> = [];
+  const used = new Set<string>();
+  for (let k = 0; k < count && used.size < establishmentIds.length; k++) {
+    let ei = (index * 2 + k * 3) % establishmentIds.length;
+    // avanzar hasta una tienda no usada (mantiene unicidad por vino)
+    let guard = 0;
+    while (used.has(establishmentIds[ei]) && guard < establishmentIds.length) {
+      ei = (ei + 1) % establishmentIds.length;
+      guard++;
+    }
+    const establishmentId = establishmentIds[ei];
+    if (used.has(establishmentId)) break;
+    used.add(establishmentId);
+    const price = round2(basePrice * factors[k % factors.length]);
+    const status: 'DISPONIBLE' | 'AGOTADO' = (index + k) % 17 === 0 ? 'AGOTADO' : 'DISPONIBLE';
+    rows.push({ wineId, establishmentId, price, status });
+  }
+  return rows;
+}
