@@ -15,11 +15,26 @@ export class ReservationsService {
     private readonly email: EmailService,
   ) {}
 
-  computeAmounts(input: { unitPrice: number; quantity: number; isFirstReservation: boolean }) {
+  private haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+    const rad = (d: number) => (d * Math.PI) / 180;
+    const dLat = rad(bLat - aLat), dLng = rad(bLng - aLng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(rad(aLat)) * Math.cos(rad(bLat));
+    return 6371 * 2 * Math.asin(Math.sqrt(h));
+  }
+
+  deliveryFeeFor(orderType: string, store: { lat: number; lng: number }, deliveryLat?: number, deliveryLng?: number): number {
+    if (orderType !== 'delivery') return 0;
+    const km = Math.min(50, Math.max(0, this.haversineKm(store.lat, store.lng, deliveryLat ?? store.lat, deliveryLng ?? store.lng)));
+    return round2(0.8 + 0.35 * km);
+  }
+
+  computeAmounts(input: { unitPrice: number; quantity: number; isFirstReservation: boolean; deliveryFee?: number }) {
+    const deliveryFee = round2(input.deliveryFee ?? 0);
     const subtotal = round2(input.unitPrice * input.quantity);
     const discountPct = input.isFirstReservation ? 5 : 0;
     const discountAmount = round2((subtotal * discountPct) / 100);
-    const total = round2(subtotal - discountAmount);
+    const productsTotal = round2(subtotal - discountAmount);
+    const total = round2(productsTotal + deliveryFee);
     const deposit = round2(total * 0.2);
     const balance = round2(total - deposit);
     return { subtotal, discountPct, discountAmount, total, deposit, balance };
@@ -32,9 +47,17 @@ export class ReservationsService {
     });
     if (!availability) throw new NotFoundException('Ese vino no está disponible en esa tienda.');
 
+    if (dto.orderType === 'delivery' && !(dto.deliveryAddress && dto.deliveryAddress.trim())) {
+      throw new BadRequestException('Falta la dirección de entrega.');
+    }
     const priorCount = await this.prisma.reservation.count({ where: { userId } });
     const unitPrice = Number(availability.price);
-    const amounts = this.computeAmounts({ unitPrice, quantity: dto.quantity, isFirstReservation: priorCount === 0 });
+    const deliveryFee = this.deliveryFeeFor(
+      dto.orderType,
+      { lat: availability.establishment.lat, lng: availability.establishment.lng },
+      dto.deliveryLat, dto.deliveryLng,
+    );
+    const amounts = this.computeAmounts({ unitPrice, quantity: dto.quantity, isFirstReservation: priorCount === 0, deliveryFee });
 
     const total = await this.prisma.reservation.count();
     const invoiceNumber = 'CL-' + String(total + 1).padStart(6, '0');
@@ -57,6 +80,11 @@ export class ReservationsService {
         customerPhone: dto.customer.phone,
         pickupDate: dto.pickupDate ? new Date(dto.pickupDate) : null,
         status: 'pending_payment',
+        orderType: dto.orderType,
+        deliveryFee,
+        deliveryAddress: dto.orderType === 'delivery' ? dto.deliveryAddress : null,
+        deliveryLat: dto.orderType === 'delivery' ? dto.deliveryLat : null,
+        deliveryLng: dto.orderType === 'delivery' ? dto.deliveryLng : null,
       },
     });
   }
@@ -85,6 +113,9 @@ export class ReservationsService {
       deposit: Number(reservation.deposit),
       balance: Number(reservation.balance),
       pickupDate: reservation.pickupDate ? reservation.pickupDate.toISOString().slice(0, 10) : null,
+      orderType: reservation.orderType as 'pickup' | 'delivery',
+      deliveryFee: Number(reservation.deliveryFee),
+      deliveryAddress: reservation.deliveryAddress,
     });
 
     const updated = await this.prisma.reservation.update({

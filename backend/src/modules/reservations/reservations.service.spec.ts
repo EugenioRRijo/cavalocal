@@ -50,3 +50,27 @@ describe('ReservationsService.payReservation', () => {
     expect(res.reservation.status).toBe('confirmed');
   });
 });
+
+describe('ReservationsService.deliveryFeeFor', () => {
+  const svc = new ReservationsService({} as any, {} as any, {} as any);
+  const store = { lat: 10.5, lng: -66.85 };
+
+  it('pickup no cobra envío', () => {
+    expect(svc.deliveryFeeFor('pickup', store, 10.6, -66.9)).toBe(0);
+  });
+  it('delivery a ~5km da ~2.55', () => {
+    const fee = svc.deliveryFeeFor('delivery', { lat: 0, lng: 0 }, 0.04497, 0);
+    expect(fee).toBeGreaterThan(2.4);
+    expect(fee).toBeLessThan(2.7);
+  });
+});
+
+describe('ReservationsService.computeAmounts con envío', () => {
+  const svc = new ReservationsService({} as any, {} as any, {} as any);
+  it('suma el envío y calcula seña 20% sobre el total con envío', () => {
+    const a = svc.computeAmounts({ unitPrice: 10, quantity: 2, isFirstReservation: false, deliveryFee: 2.55 });
+    expect(a.total).toBe(22.55);
+    expect(a.deposit).toBe(4.51);
+    expect(a.balance).toBe(18.04);
+  });
+});
