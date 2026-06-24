@@ -33,7 +33,7 @@
   --shadow-sm: 0 2px 8px rgba(42,32,36,0.05);
   --shadow-md: 0 10px 24px rgba(42,32,36,0.08);
   --shadow-lg: 0 20px 48px rgba(42,32,36,0.14);
-  --shadow-hover: 0 22px 50px rgba(42,32,36,0.20);
+  --shadow-hover: 0 10px 24px rgba(42,32,36,0.16);
 
   /* Tipografía */
   --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
@@ -178,7 +178,7 @@ ul { list-style: none; }
 
 /* ---------- Product card ---------- */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column; transition: var(--transition); position: relative; }
-.card:hover { transform: translateY(-5px); box-shadow: 0 10px 24px rgba(42,32,36,0.16); border-color: var(--gold); }
+.card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--gold); }
 .card .card-img { height: 160px; background: var(--thumb); display: flex; align-items: center; justify-content: center; position: relative; }
 .card .card-img svg { height: 78%; }
 .card .wish { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center; }
