@@ -3,7 +3,7 @@ import { getUser } from './store.js';
 import { money } from './money.js';
 import { luhnValid, formatCardNumber, expiryValid, cvvValid } from './payment-utils.js';
 import { deliveryFee } from './delivery.js';
-import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
+import { haversineKm, DEFAULT_LOC } from './geo.js';
 
 const $ = (s, r) => (r || document).querySelector(s);
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -17,14 +17,13 @@ export function openCheckout(wine, userLoc) {
     wine, offers, offerIdx: 0, quantity: 1,
     customer: { name: user ? user.name : '', email: user ? user.email : '', phone: '' },
     pickupDate: '', orderType: 'pickup', deliveryAddress: '',
-    userLoc: userLoc || DEFAULT_LOC,
     deliveryPoint: { ...(userLoc || DEFAULT_LOC) },
     step: 1, reservation: null, _miniMap: null,
   };
   render();
 }
 
-function close() { const el = $('#checkout'); el.innerHTML = ''; st = null; }
+function close() { if (st && st._miniMap) { st._miniMap.remove(); st._miniMap = null; } const el = $('#checkout'); el.innerHTML = ''; st = null; }
 
 function steps(n) {
   return '<div class="co-steps">' + [1, 2, 3, 4].map((i) =>
@@ -163,6 +162,7 @@ function bind() {
         st.customer.email = ($('#co-email') || {}).value || st.customer.email;
         st.customer.phone = ($('#co-phone') || {}).value || st.customer.phone;
         st.deliveryAddress = ($('#co-addr') || {}).value || st.deliveryAddress;
+        st.pickupDate = ($('#co-date') || {}).value || st.pickupDate;
         st.orderType = b.getAttribute('data-ot');
         render();
       };
@@ -224,6 +224,7 @@ function bind() {
 
 function printInvoice(r) {
   const w = window.open('', '_blank');
+  const saldoLabel = r.orderType === 'delivery' ? 'Resto al recibir (efectivo)' : 'Saldo al retirar (80%)';
   const disc = r.discountPct > 0 ? '<tr><td>Descuento (' + r.discountPct + '%)</td><td style="text-align:right">-' + money(r.discountAmount) + '</td></tr>' : '';
   w.document.write('<html><head><title>Factura ' + esc(r.invoiceNumber) + '</title></head><body style="font-family:Arial;max-width:560px;margin:24px auto;color:#2A2024">' +
     '<h2 style="color:#641E2E">CavaLocal — Factura ' + esc(r.invoiceNumber) + '</h2>' +
@@ -235,7 +236,7 @@ function printInvoice(r) {
     '<tr><td>Subtotal</td><td style="text-align:right">' + money(r.subtotal) + '</td></tr>' + disc +
     '<tr><td><b>Total</b></td><td style="text-align:right"><b>' + money(r.total) + '</b></td></tr>' +
     '<tr><td>Seña pagada (20%)</td><td style="text-align:right">' + money(r.deposit) + '</td></tr>' +
-    '<tr><td>Saldo al retirar (80%)</td><td style="text-align:right">' + money(r.balance) + '</td></tr></table>' +
+    '<tr><td>' + saldoLabel + '</td><td style="text-align:right">' + money(r.balance) + '</td></tr></table>' +
     '<p style="font-size:12px;color:#999">Pago de prueba — sin cobro real. Bebé con moderación · +18.</p>' +
     '</body></html>');
   w.document.close(); w.focus(); w.print();

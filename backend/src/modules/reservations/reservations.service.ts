@@ -24,8 +24,11 @@ export class ReservationsService {
 
   deliveryFeeFor(orderType: string, store: { lat: number; lng: number }, deliveryLat?: number, deliveryLng?: number): number {
     if (orderType !== 'delivery') return 0;
-    const km = Math.min(50, Math.max(0, this.haversineKm(store.lat, store.lng, deliveryLat ?? store.lat, deliveryLng ?? store.lng)));
-    return round2(0.8 + 0.35 * km);
+    const BASE_FEE = 0.80;  // cargo base del envío
+    const PER_KM = 0.35;    // costo por km
+    const MAX_KM = 50;      // tope de distancia (sanidad)
+    const km = Math.min(MAX_KM, Math.max(0, this.haversineKm(store.lat, store.lng, deliveryLat ?? store.lat, deliveryLng ?? store.lng)));
+    return round2(BASE_FEE + PER_KM * km);
   }
 
   computeAmounts(input: { unitPrice: number; quantity: number; isFirstReservation: boolean; deliveryFee?: number }) {

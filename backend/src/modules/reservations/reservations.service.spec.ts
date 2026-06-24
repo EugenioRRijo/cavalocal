@@ -28,6 +28,7 @@ describe('ReservationsService.payReservation', () => {
     customerName: 'Ana', customerEmail: 'ana@example.com', wineName: 'Malbec', wineryName: 'Las Moras',
     storeName: 'Centro', storeAddress: 'Av', quantity: 2, unitPrice: 10, subtotal: 20, discountPct: 5,
     discountAmount: 1, total: 19, balance: 15.2, pickupDate: null,
+    orderType: 'pickup', deliveryFee: 0, deliveryAddress: null,
   };
   const prisma = { reservation: { findUnique: jest.fn(), update: jest.fn() } } as any;
   const payments = { charge: jest.fn().mockReturnValue({ status: 'approved', paymentId: 'pay_x' }) } as any;

@@ -47,8 +47,6 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
 
   // ---------- utils ----------
   function $(s, r) { return (r || document).querySelector(s); }
-  function rad(d) { return (d * Math.PI) / 180; }
-  function haversine(aLat, aLng, bLat, bLng) { return haversineKm(aLat, aLng, bLat, bLng); }
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function money(n) { return '$' + Number(n).toFixed(2); }
   function round1(n) { return Math.round(n * 10) / 10; }
@@ -80,7 +78,7 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
       return {
         storeId: e.id, storeName: e.name, lat: e.lat, lng: e.lng,
         price: Number(a.price), status: a.status,
-        dist: round1(haversine(state.userLoc.lat, state.userLoc.lng, e.lat, e.lng)), best: false,
+        dist: round1(haversineKm(state.userLoc.lat, state.userLoc.lng, e.lat, e.lng)), best: false,
       };
     }).sort(function (x, y) { return x.price - y.price; });
     if (offers.length) offers[0].best = true;
@@ -309,7 +307,7 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
     }).addTo(map);
     var pts = [];
     stores.forEach(function (s) {
-      var km = round1(haversine(state.userLoc.lat, state.userLoc.lng, s.lat, s.lng));
+      var km = round1(haversineKm(state.userLoc.lat, state.userLoc.lng, s.lat, s.lng));
       L.marker([s.lat, s.lng]).addTo(map)
         .bindPopup('<b>' + esc(s.name) + '</b><br>desde ' + money(s.price) + ' · ' + km + ' km');
       pts.push([s.lat, s.lng]);
