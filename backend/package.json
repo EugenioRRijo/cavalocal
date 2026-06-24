@@ -11,6 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
+    "import:wines": "ts-node prisma/import-wines.ts",
     "db:setup": "prisma migrate dev --name init && ts-node prisma/seed.ts",
     "test": "jest",
     "test:watch": "jest --watch"
@@ -64,6 +65,7 @@
     "@types/node": "^20.14.0",
     "@types/nodemailer": "^8.0.1",
     "@types/passport-jwt": "^4.0.1",
+    "csv-parse": "^7.0.0",
     "jest": "^29.7.0",
     "prisma": "^5.18.0",
     "ts-jest": "^29.4.11",

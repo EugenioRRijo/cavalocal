@@ -29,6 +29,9 @@ Fotos/
 # ---------- Scratch de orquestación (briefs/reports/reviews SDD) ----------
 .superpowers/
 
+# ---------- Dataset de import (no commitear) ----------
+backend/prisma/data/
+
 # ---------- SO / editores ----------
 Thumbs.db
 .DS_Store
