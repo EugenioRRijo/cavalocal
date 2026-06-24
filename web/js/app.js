@@ -3,7 +3,7 @@
    backend NestJS vía js/api.js. Sin frameworks.
    ============================================================ */
 import { mountCarousel } from './carousel.js';
-import { getWines } from './api.js';
+import { getWines, getFacets, getBestsellers } from './api.js';
 import { getUser, getToken, logout, setPendingReturn } from './store.js';
 import { openCheckout } from './checkout.js';
 import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
@@ -33,15 +33,22 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
   ];
 
   var state = {
-    raw: [],
+    items: [],
+    raw: [], // alias de items, para los modos comparar/mapa
+    total: 0,
+    page: 1,
+    pageSize: 24,
     term: '',
-    sort: 'cercania',
+    type: '',
+    country: '',
+    sort: 'relevancia',
     mode: 'lista',
     price: 'all',
+    facets: { types: [], countries: [], grapes: [] },
+    bestsellers: [],
     token: getToken(),
     user: getUser(),
-    loaded: false,
-    apiWines: [],
+    loading: false,
     userLoc: USER_LOC,
   };
 
@@ -67,71 +74,84 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
       '<path d="M12 1 h6 v9 c0 2 3 4 3 9 v25 c0 2 -1 3 -3 3 h-6 c-2 0 -3 -1 -3 -3 V19 c0 -5 3 -7 3 -9 z" fill="' + c + '"/>' +
       '<rect x="9" y="26" width="12" height="11" rx="1.5" fill="#fff" opacity="0.92"/></svg>';
   }
+  function mediaHtml(w) {
+    if (w.imageUrl) return '<img class="bottle-img" src="' + esc(w.imageUrl) + '" alt="' + esc(w.name) + '" loading="lazy" />';
+    return bottleSVG(w.type);
+  }
+  function ratingHtml(w) {
+    var parts = [];
+    if (w.criticScore != null) parts.push('★ <b>' + w.criticScore + '</b> <span>crítica</span>');
+    if (w.reviews > 0 && w.rating != null) parts.push('<span>' + Number(w.rating).toFixed(1) + '★ · ' + w.reviews + '</span>');
+    if (!parts.length) return '<div class="rating"><span>Sin reseñas aún</span></div>';
+    return '<div class="rating">' + parts.join(' · ') + '</div>';
+  }
 
   // ---------- data ----------
   function transform(w) {
-    var parts = (w.origin || '').split(',').map(function (p) { return p.trim(); });
-    var country = parts.length > 1 ? parts[parts.length - 1] : '';
-    var region = parts.slice(0, Math.max(1, parts.length - 1)).join(', ') || country;
-    var offers = (w.availabilities || []).map(function (a) {
-      var e = a.establishment || {};
+    var offers = (w.offers || []).map(function (o) {
       return {
-        storeId: e.id, storeName: e.name, lat: e.lat, lng: e.lng,
-        price: Number(a.price), status: a.status,
-        dist: round1(haversineKm(state.userLoc.lat, state.userLoc.lng, e.lat, e.lng)), best: false,
+        storeId: o.establishmentId, storeName: o.storeName, lat: o.lat, lng: o.lng,
+        price: Number(o.price), status: o.status,
+        dist: round1(haversineKm(state.userLoc.lat, state.userLoc.lng, o.lat, o.lng)), best: false,
       };
-    }).sort(function (x, y) { return x.price - y.price; });
+    }).sort(function (a, b) { return a.price - b.price; });
     if (offers.length) offers[0].best = true;
-    var nearest = offers.slice().sort(function (x, y) { return x.dist - y.dist; })[0] || null;
-    var h = hash(w.id);
-    var low = (h % 7) === 0;
+    var nearest = offers.slice().sort(function (a, b) { return a.dist - b.dist; })[0] || null;
+    var agotado = offers.length > 0 && offers.every(function (o) { return o.status === 'AGOTADO'; });
     return {
-      id: w.id, name: w.name, vintage: w.vintage, winery: w.wineryName,
-      country: country, region: region, grape: w.grape, type: w.type,
-      denomination: w.denominationOfOrigin || '',
-      offers: offers,
-      bestPrice: offers.length ? offers[0].price : Number(w.referencePrice),
-      storeCount: offers.length,
-      nearest: nearest,
-      rating: Math.round((4 + (h % 10) / 10) * 10) / 10,
-      reviews: 40 + (h % 560),
-      stock: low ? { kind: 'ultimas', text: 'Últimas 3', color: '#C2912B' } : { kind: 'disponible', text: 'Disponible', color: '#2E8B57' },
+      id: w.id, name: w.name, vintage: w.vintage, winery: w.wineryName, grape: w.grape,
+      country: w.country, region: (w.origin || '').split(',')[0].trim(), type: w.type,
+      imageUrl: w.imageUrl, offers: offers,
+      bestPrice: w.bestPrice != null ? Number(w.bestPrice) : Number(w.referencePrice),
+      storeCount: w.storeCount != null ? w.storeCount : offers.length,
+      nearest: nearest, criticScore: w.criticScore,
+      rating: w.avgRating, reviews: w.reviewCount || 0,
+      stock: agotado
+        ? { kind: 'agotado', text: 'Agotado', color: '#C0392B' }
+        : { kind: 'disponible', text: 'Disponible', color: '#2E8B57' },
     };
   }
 
-  function matchTerm(w, term) {
-    if (!term) return true;
-    var hay = (w.name + ' ' + w.grape + ' ' + w.country + ' ' + w.region + ' ' + w.winery + ' ' + w.type).toLowerCase();
-    return hay.indexOf(term.toLowerCase()) !== -1;
-  }
-  function priceOk(p, b) {
-    if (b === 'lt15') return p < 15;
-    if (b === 'mid') return p >= 15 && p <= 25;
-    if (b === 'gt25') return p > 25;
-    return true;
-  }
-  function filtered() {
-    var list = state.raw.filter(function (w) { return matchTerm(w, state.term) && priceOk(w.bestPrice, state.price); });
-    if (state.sort === 'precio') list.sort(function (a, b) { return a.bestPrice - b.bestPrice; });
-    else if (state.sort === 'calificacion') list.sort(function (a, b) { return b.rating - a.rating; });
-    else list.sort(function (a, b) { return (a.nearest ? a.nearest.dist : 99) - (b.nearest ? b.nearest.dist : 99); });
-    return list;
-  }
-  function counts(key) {
-    var m = {};
-    state.raw.forEach(function (w) { var k = w[key]; m[k] = (m[k] || 0) + 1; });
-    return Object.keys(m).map(function (k) { return { key: k, count: m[k] }; }).sort(function (a, b) { return b.count - a.count; });
+  function filtered() { return state.items; }
+
+  function priceParams() {
+    if (state.price === 'lt15') return { priceMax: 15 };
+    if (state.price === 'mid') return { priceMin: 15, priceMax: 25 };
+    if (state.price === 'gt25') return { priceMin: 25 };
+    return {};
   }
 
-  async function loadWines() {
+  async function loadPage(reset) {
+    if (state.loading) return;
+    state.loading = true;
+    if (reset) { state.page = 1; state.items = []; }
+    var params = Object.assign({
+      q: state.term, type: state.type, country: state.country,
+      sort: state.sort, page: state.page, pageSize: state.pageSize,
+    }, priceParams());
     try {
-      state.apiWines = await getWines();
-      state.raw = state.apiWines.map(transform);
+      var res = await getWines(params);
+      state.total = res.total;
+      var mapped = res.items.map(transform);
+      state.items = reset ? mapped : state.items.concat(mapped);
+      state.raw = state.items;
     } catch (e) {
-      state.apiWines = []; state.raw = [];
-      console.warn('No se pudo cargar el backend:', e);
+      if (reset) { state.items = []; state.raw = []; state.total = 0; }
+      // eslint-disable-next-line no-console
+      console.warn('No se pudo cargar el catálogo:', e);
+    } finally {
+      state.loading = false;
     }
-    state.loaded = true;
+  }
+
+  // recarga desde cero ante cualquier cambio de filtro/búsqueda/orden
+  async function reload() {
+    renderToolbar();
+    $('#view').innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Cargando…</div>';
+    await loadPage(true);
+    renderView();
+    renderToolbar();
+    toggleHome();
   }
 
   // ---------- render ----------
@@ -163,15 +183,14 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
 
   function miniCard(w) {
     return '<div class="card mini" data-detail="' + w.id + '">' +
-      '<div class="card-img"><span class="top-tag">TOP</span>' + bottleSVG(w.type) + '</div>' +
+      '<div class="card-img"><span class="top-tag">TOP</span>' + mediaHtml(w) + '</div>' +
       '<div class="card-body"><div class="winery">' + esc(w.winery) + '</div>' +
       '<div class="pname">' + esc(w.name) + '</div>' +
-      '<div class="rating">★ <b>' + w.rating.toFixed(1) + '</b> <span>(' + w.reviews + ')</span></div>' +
+      ratingHtml(w) +
       '<div class="price-row"><span class="from">desde</span><span class="price">' + money(w.bestPrice) + '</span></div></div></div>';
   }
   function renderBestsellers() {
-    var byId = {}; state.raw.forEach(function (w) { byId[w.id] = w; });
-    var list = BESTSELLERS.map(function (id) { return byId[id]; }).filter(Boolean);
+    var list = (state.bestsellers || []).map(transform);
     $('#bestsellers').innerHTML = list.map(miniCard).join('');
   }
 
@@ -200,35 +219,34 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
     }).join('');
   }
 
+  function frow(field, key, label, count) {
+    var active = (field === 'type' && state.type === key) ||
+                 (field === 'country' && state.country === key) ||
+                 (field === 'price' && state.price === key);
+    return '<div class="frow ' + (active ? 'active' : '') + '" data-' + field + '="' + esc(key) + '">' +
+      '<span>' + esc(label) + '</span>' + (count != null ? '<span class="fcount">' + count + '</span>' : '') + '</div>';
+  }
   function renderFilters() {
-    var byType = counts('type'), byWorldRaw = counts('country');
-    // Agrupar por "mundo" simple: Local (Venezuela) vs resto (por país)
+    var f = state.facets;
     var html = '';
-    html += '<div class="filter-group"><div class="ftitle">Tipo</div>' + byType.map(function (c) {
-      return '<div class="frow ' + (state.term === c.key ? 'active' : '') + '" data-term="' + esc(c.key) + '"><span>' + esc(c.key) + '</span><span class="fcount">' + c.count + '</span></div>';
-    }).join('') + '</div>';
-    html += '<div class="filter-group"><div class="ftitle">País</div>' + byWorldRaw.map(function (c) {
-      return '<div class="frow ' + (state.term === c.key ? 'active' : '') + '" data-term="' + esc(c.key) + '"><span>' + esc(c.key) + '</span><span class="fcount">' + c.count + '</span></div>';
-    }).join('') + '</div>';
-    html += '<div class="filter-group" style="border-bottom:none"><div class="ftitle">Precio</div>' + PRICES.map(function (p) {
-      return '<div class="frow ' + (state.price === p.key ? 'active' : '') + '" data-price="' + p.key + '"><span>' + esc(p.label) + '</span></div>';
-    }).join('') + '</div>';
+    html += '<div class="filter-group"><div class="ftitle">Tipo</div>' +
+      f.types.map(function (c) { return frow('type', c.key, c.key, c.count); }).join('') + '</div>';
+    html += '<div class="filter-group"><div class="ftitle">País</div>' +
+      f.countries.map(function (c) { return frow('country', c.key, c.key, c.count); }).join('') + '</div>';
+    html += '<div class="filter-group" style="border-bottom:none"><div class="ftitle">Precio</div>' +
+      PRICES.map(function (p) { return frow('price', p.key, p.label, null); }).join('') + '</div>';
     $('#filters').innerHTML = html;
   }
 
   function renderToolbar() {
-    var list = filtered();
-    var cnt = state.mode === 'comparar'
-      ? list.filter(function (w) { return w.offers.length > 1; }).length
-      : list.length;
-    $('#resCount').textContent = cnt;
+    $('#resCount').textContent = state.total;
     document.querySelectorAll('#sortOpts .opt').forEach(function (b) { b.classList.toggle('active', b.dataset.sort === state.sort); });
     document.querySelectorAll('#modes .mode').forEach(function (b) { b.classList.toggle('active', b.dataset.mode === state.mode); });
   }
 
   function gridCard(w) {
     return '<div class="card" data-detail="' + w.id + '">' +
-      '<div class="card-img">' + bottleSVG(w.type) +
+      '<div class="card-img">' + mediaHtml(w) +
         '<button class="wish" title="Favorito"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#641E2E" stroke-width="2"><path d="M12 20s-7-4.4-9.3-8.4C1.2 8.7 2.9 5.5 6.2 5.5c1.9 0 3.2 1 3.8 1.9C10.6 6.5 11.9 5.5 13.8 5.5c3.3 0 5 3.2 3.5 6.1C19 15.6 12 20 12 20z"/></svg></button>' +
         '<div class="stock" style="color:' + w.stock.color + '"><span class="dot" style="background:' + w.stock.color + '"></span>' + w.stock.text + '</div>' +
       '</div>' +
@@ -236,7 +254,7 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
         '<div class="winery">' + esc(w.winery) + '</div>' +
         '<div class="pname">' + esc(w.name) + (w.vintage ? ' ' + w.vintage : '') + '</div>' +
         '<div class="pchip">' + esc(w.grape) + ' · ' + esc(w.region) + '</div>' +
-        '<div class="rating">★ <b>' + w.rating.toFixed(1) + '</b> <span>(' + w.reviews + ')</span></div>' +
+        ratingHtml(w) +
         '<div class="price-row"><span class="from">desde</span><span class="price">' + money(w.bestPrice) + '</span></div>' +
         '<div class="stores">en ' + w.storeCount + ' tiendas</div>' +
         '<button class="btn-reserve" data-reserve="' + w.id + '">Reservar</button>' +
@@ -248,7 +266,7 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
     return '<div class="compare-card">' +
       '<div class="ch"><div class="card-img" style="width:64px;height:64px;border-radius:10px">' + bottleSVG(w.type) + '</div>' +
       '<div><div class="pname" data-detail="' + w.id + '" style="cursor:pointer">' + esc(w.name) + (w.vintage ? ' ' + w.vintage : '') + '</div>' +
-      '<div class="winery">' + esc(w.winery) + '</div><div class="rating">★ <b>' + w.rating.toFixed(1) + '</b> <span>(' + w.reviews + ')</span></div></div></div>' +
+      '<div class="winery">' + esc(w.winery) + '</div>' + ratingHtml(w) + '</div></div>' +
       '<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Mismo vino en <b>' + offers.length + ' tiendas cercanas</b></div>' +
       offers.map(function (o) {
         return '<div class="offer ' + (o.best ? 'best' : '') + '"><div><span class="oname">' + esc(o.storeName) + '</span>' + (o.best ? '<span class="best-tag">MEJOR PRECIO</span>' : '') + '<div style="font-size:12px;color:var(--muted)">' + o.dist + ' km</div></div><span class="oprice" style="color:' + (o.best ? 'var(--wine)' : 'var(--ink)') + '">' + money(o.price) + '</span></div>';
@@ -261,7 +279,10 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
     var list = filtered();
     if (state.mode === 'lista') {
       if (!list.length) { view.innerHTML = emptyState(); return; }
-      view.innerHTML = '<div class="grid">' + list.map(gridCard).join('') + '</div>';
+      var more = state.items.length < state.total
+        ? '<div class="load-more-wrap"><button class="load-more" id="loadMore">Cargar más (' + state.items.length + ' de ' + state.total + ')</button></div>'
+        : '';
+      view.innerHTML = '<div class="grid">' + list.map(gridCard).join('') + '</div>' + more;
     } else if (state.mode === 'comparar') {
       var cmp = list.filter(function (w) { return w.offers.length > 1; }).sort(function (a, b) { return b.offers.length - a.offers.length; });
       if (!cmp.length) { view.innerHTML = emptyState(); return; }
@@ -346,46 +367,65 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
 
   // ---------- events ----------
   function bind() {
-    $('#search').addEventListener('input', function (e) { state.term = e.target.value; renderCatbar(); renderFilters(); renderToolbar(); renderView(); toggleHome(); });
-
-    document.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-cat],[data-sort],[data-mode],[data-open],[data-reserve],[data-detail],[data-term],[data-price],[data-logout]');
-      if (!t) {
-        if (e.target.id === 'clearFilters') { state.term = ''; state.price = 'all'; render(); }
-        return;
-      }
-      if (t.id === 'clearFilters') return;
-      if (t.hasAttribute('data-cat')) { e.preventDefault(); state.term = t.getAttribute('data-cat'); state.price = 'all'; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else if (t.hasAttribute('data-term')) { var v = t.getAttribute('data-term'); state.term = (state.term === v ? '' : v); render(); }
-      else if (t.hasAttribute('data-price')) { state.price = t.getAttribute('data-price'); render(); }
-      else if (t.hasAttribute('data-sort')) { state.sort = t.getAttribute('data-sort'); renderToolbar(); renderView(); }
-      else if (t.hasAttribute('data-mode')) { state.mode = t.getAttribute('data-mode'); if (state.mode === 'comparar') state.sort = 'precio'; renderToolbar(); renderView(); toggleHome(); }
-      else if (t.hasAttribute('data-open')) { e.preventDefault(); window.location.href = 'login.html' + (t.getAttribute('data-open') === 'register' ? '?register' : ''); }
-      else if (t.hasAttribute('data-reserve')) { e.stopPropagation(); reserve(t.getAttribute('data-reserve')); }
-      else if (t.hasAttribute('data-logout')) { logout(); state.token = null; state.user = null; render(); }
-      else if (t.hasAttribute('data-detail')) { /* detalle simple: filtrar a ese vino */ }
+    var searchTimer = null;
+    $('#search').addEventListener('input', function (e) {
+      state.term = e.target.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () { reload(); }, 300);
     });
 
-    // limpiar filtros (id directo)
-    document.getElementById('clearFilters').addEventListener('click', function () { state.term = ''; state.price = 'all'; render(); });
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-cat],[data-sort],[data-mode],[data-open],[data-reserve],[data-detail],[data-type],[data-country],[data-price],[data-logout],#loadMore,#clearFilters');
+      if (!t) return;
+      if (t.id === 'clearFilters') { state.term = ''; state.type = ''; state.country = ''; state.price = 'all'; $('#search').value = ''; reload(); return; }
+      if (t.id === 'loadMore') { e.preventDefault(); state.page += 1; loadPage(false).then(function () { renderView(); }); return; }
+      if (t.hasAttribute('data-cat')) {
+        e.preventDefault();
+        var v = t.getAttribute('data-cat');
+        var TYPES = ['Tinto', 'Blanco', 'Espumante', 'Rosado', 'Fortificado'];
+        var COUNTRIES = ['Venezuela', 'Argentina', 'Chile', 'España', 'Italia', 'Francia', 'Portugal', 'US'];
+        state.type = ''; state.country = ''; state.term = ''; state.price = 'all'; $('#search').value = '';
+        if (TYPES.indexOf(v) !== -1) state.type = v;
+        else if (COUNTRIES.indexOf(v) !== -1) state.country = v;
+        else if (v) state.term = v;
+        reload(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (t.hasAttribute('data-type')) { state.type = (state.type === t.getAttribute('data-type') ? '' : t.getAttribute('data-type')); reload(); }
+      else if (t.hasAttribute('data-country')) { state.country = (state.country === t.getAttribute('data-country') ? '' : t.getAttribute('data-country')); reload(); }
+      else if (t.hasAttribute('data-price')) { state.price = t.getAttribute('data-price'); reload(); }
+      else if (t.hasAttribute('data-sort')) { state.sort = t.getAttribute('data-sort'); reload(); }
+      else if (t.hasAttribute('data-mode')) { state.mode = t.getAttribute('data-mode'); renderToolbar(); renderView(); toggleHome(); }
+      else if (t.hasAttribute('data-open')) { e.preventDefault(); window.location.href = 'login.html' + (t.getAttribute('data-open') === 'register' ? '?register' : ''); }
+      else if (t.hasAttribute('data-reserve')) { e.stopPropagation(); reserve(t.getAttribute('data-reserve')); }
+      else if (t.hasAttribute('data-detail')) { e.preventDefault(); if (window.CavaDetail) window.CavaDetail.open(t.getAttribute('data-detail')); }
+      else if (t.hasAttribute('data-logout')) { logout(); state.user = null; render(); }
+    });
   }
 
   async function init() {
     bind();
-    renderCarousel(); renderTiles(); // estáticos: se muestran al instante
+    renderCarousel(); renderTiles();
     renderAccount(); renderCatbar();
     $('#view').innerHTML = '<div style="text-align:center;padding:60px;color:var(--muted)">Cargando catálogo…</div>';
-    await loadWines();
+
+    try {
+      var f = await getFacets();
+      state.facets = f;
+    } catch (e) { /* filtros vacíos si falla */ }
+    try {
+      state.bestsellers = await getBestsellers();
+    } catch (e) { state.bestsellers = []; }
+    renderFilters(); renderBestsellers();
+
+    await loadPage(true);
     render();
 
     getUserLocation().then(function (loc) {
       state.userLoc = loc;
-      if (state.apiWines.length) state.raw = state.apiWines.map(transform);
-      renderToolbar(); renderView();
+      state.items = state.items.map(function (w) { return w; }); // recalcular distancias en próximos renders
+      renderView();
       var chip = $('#locchip');
       if (chip) chip.textContent = loc.source === 'gps' ? '📍 Tu ubicación' : '📍 Caracas (aprox.)';
     });
-
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

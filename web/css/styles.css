@@ -279,3 +279,10 @@ ul { list-style: none; }
   .carousel-track { height: 280px; }
   .carousel-content h2 { font-size: 26px; }
 }
+
+/* Foto de botella (si existe; si no, se usa la SVG) */
+.card .card-img .bottle-img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+/* Cargar más */
+.load-more-wrap { display: flex; justify-content: center; margin: 22px 0; }
+.load-more { background: var(--card); border: 1px solid var(--gold); color: var(--wine); font-weight: 700; padding: 11px 26px; border-radius: 50px; transition: var(--transition); }
+.load-more:hover { background: var(--gold-soft); }
