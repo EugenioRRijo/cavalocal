@@ -125,6 +125,12 @@ window.addEventListener('load', () => setTimeout(initGoogle, 300));
 (function asideMedia() {
   const v = document.getElementById('login-cine');
   if (!v || typeof v.pause !== 'function') return;
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) { try { v.removeAttribute('autoplay'); v.pause(); } catch (_) {} }
+  const mq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (!mq) return;
+  function apply() {
+    if (mq.matches) { try { v.removeAttribute('autoplay'); v.pause(); } catch (_) {} }
+    else { try { v.setAttribute('autoplay', ''); v.play(); } catch (_) {} }
+  }
+  apply();
+  mq.addEventListener('change', apply);
 })();
