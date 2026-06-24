@@ -111,6 +111,7 @@ model Wine {
   type                 String
   wineryName           String
   origin               String
+  country              String?
   grape                String
   vintage              Int?
   tastingNote          String?
@@ -119,6 +120,8 @@ model Wine {
   aging                String?
   descriptors          Json?
   referencePrice       Decimal        @db.Decimal(10, 2)
+  criticScore          Int?
+  imageUrl             String?
   verified             Boolean        @default(false)
   availabilities       Availability[]
   reservations         Reservation[]
@@ -126,6 +129,10 @@ model Wine {
 
   @@index([grape])
   @@index([origin])
+  @@index([type])
+  @@index([country])
+  @@index([wineryName])
+  @@index([criticScore])
 }
 
 model Availability {
@@ -156,6 +163,7 @@ model Review {
 
   @@index([targetType, wineId])
   @@index([targetType, establishmentId])
+  @@unique([userId, wineId])
 }
 
 model Order {
