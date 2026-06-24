@@ -24,7 +24,6 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
     { label: 'España', term: 'España' },
     { label: 'Italia', term: 'Italia' },
   ];
-  var BESTSELLERS = ['las-moras-malbec','casablanca-sb','santa-rita-120','concha-toro-carmenere','pomar-syrah','pomar-brut','navarro-correas-cab','silk-spice','chianti-classico','prosecco'];
   var PRICES = [
     { key: 'all', label: 'Todos los precios' },
     { key: 'lt15', label: 'Hasta $15' },
@@ -54,7 +53,6 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
 
   // ---------- utils ----------
   function $(s, r) { return (r || document).querySelector(s); }
-  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function money(n) { return '$' + Number(n).toFixed(2); }
   function round1(n) { return Math.round(n * 10) / 10; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -264,7 +262,7 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
   function compareCard(w) {
     var offers = w.offers;
     return '<div class="compare-card">' +
-      '<div class="ch"><div class="card-img" style="width:64px;height:64px;border-radius:10px">' + bottleSVG(w.type) + '</div>' +
+      '<div class="ch"><div class="card-img" style="width:64px;height:64px;border-radius:10px">' + mediaHtml(w) + '</div>' +
       '<div><div class="pname" data-detail="' + w.id + '" style="cursor:pointer">' + esc(w.name) + (w.vintage ? ' ' + w.vintage : '') + '</div>' +
       '<div class="winery">' + esc(w.winery) + '</div>' + ratingHtml(w) + '</div></div>' +
       '<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Mismo vino en <b>' + offers.length + ' tiendas cercanas</b></div>' +
@@ -340,7 +338,7 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
   }
 
   function toggleHome() {
-    var showHome = state.term === '' && state.price === 'all' && state.mode === 'lista';
+    var showHome = state.term === '' && state.type === '' && state.country === '' && state.price === 'all' && state.mode === 'lista';
     ['.hero-carousel', '.promo-tiles', '.section'].forEach(function (sel) {
       var el = $(sel); if (el) el.style.display = showHome ? '' : 'none';
     });
@@ -421,7 +419,6 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
 
     getUserLocation().then(function (loc) {
       state.userLoc = loc;
-      state.items = state.items.map(function (w) { return w; }); // recalcular distancias en próximos renders
       renderView();
       var chip = $('#locchip');
       if (chip) chip.textContent = loc.source === 'gps' ? '📍 Tu ubicación' : '📍 Caracas (aprox.)';
